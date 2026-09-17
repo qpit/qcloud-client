@@ -6,7 +6,8 @@ exclude = [
     "__pypackages__",
     "build",
     "dist",
-    ".gitignore"
+    ".gitignore",
+    "src/qcloud_client/_version.py"
 ]
 
 line-length = 200
