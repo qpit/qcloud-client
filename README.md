@@ -14,7 +14,7 @@
 - [License](#license)
 
 # Overview
-GitHub repository for the Python API wrapper for [QCloud](https://qcloud.dtu.dk), the quantum computing service operated by [QPIT](https://www.fysik.dtu.dk/english/research/qpit/) at the Technical University of Denmark.
+GitHub repository for the Python API wrapper for [QCloud](https://qcloud.dtu.dk), the quantum computing service operated by QPIT at the Technical University of Denmark.
 
 > [!WARNING]
 > The package is in early development and is not yet ready for stable public use. Expect breaking changes between minor versions until `1.0.0`.
