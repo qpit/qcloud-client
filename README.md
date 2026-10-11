@@ -21,7 +21,7 @@ GitHub repository for the Python API wrapper for [QCloud](https://qcloud.dtu.dk)
 
 # Setup
 ## Requirements
-- Python 3.9 or newer
+- Python 3.11 or newer
 - An account on [QCloud](https://qcloud.dtu.dk)
 
 ## Installation
