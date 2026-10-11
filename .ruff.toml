@@ -10,12 +10,13 @@ exclude = [
     "src/qcloud_client/_version.py"
 ]
 
+target-version = "py311"
 line-length = 200
 indent-width = 4
 
 [lint]
 select = ["ALL"]
-ignore = ["ANN001", "ARG002", "BLE001", "C901", "CPY001", "D100", "D102", "D107", "D203", "D213", "D413", "E501", "EM102", "N806", "PLR2004", "PLW0108", "T201", "TRY003", "TRY301", "UP015"]
+ignore = ["ANN001", "ANN401", "ARG002", "BLE001", "C901", "CPY001", "D100", "D102", "D107", "D203", "D213", "D413", "E501", "EM102", "N806", "PLR2004", "PLW0108", "T201", "TRY003", "TRY301", "UP015"]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
@@ -26,6 +27,9 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 # Increase maximum number of return statements in a function from 6 to 7
 pylint.max-returns = 7
+
+[lint.per-file-ignores]
+"tests/**" = ["INP001", "S101"]
 
 [format]
 quote-style = "double"
