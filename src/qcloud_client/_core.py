@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from collections.abc import Mapping
 from typing import Any
 from urllib.parse import quote
@@ -10,45 +8,28 @@ from ._version import __version__
 from .exceptions import APIStatusError, QCloudError
 from .models import Job
 
-__all__ = [
-    "DEFAULT_TIMEOUT",
-    "USER_AGENT",
-    "get_job",
-    "get_jobs",
-    "post_job",
-]
-
+DEFAULT_BASE_URL = "https://qcloud.dtu.dk"
 DEFAULT_TIMEOUT = 30
-_SERVICE_PREFIX = "/api/v1/service"
+SERVICE_PREFIX = "/api/v1/service"
 
 USER_AGENT = f"qcloud-python/{__version__} httpx/{httpx.__version__}"
 
 _MISSING = object()
 
 
-def build_headers(api_key: str | None, scheme: str, extra: Mapping[str, str] | None) -> dict[str, str]:
+def build_headers(api_key: str | None, extra: Mapping[str, str] | None) -> dict[str, str]:
     """Assemble the default request headers, letting `extra` override them."""
     headers = {"Accept": "application/json", "User-Agent": USER_AGENT}
     if api_key:
-        headers["Authorization"] = f"{scheme} {api_key}"
+        headers["Authorization"] = f"Bearer {api_key}"
     if extra:
         headers.update(extra)
     return headers
 
 
-def get_jobs() -> tuple[str, str]:
-    """Get a full list of jobs."""
-    return "GET", f"{_SERVICE_PREFIX}/jobs"
-
-
-def post_job(job_type: str, params: Mapping[str, Any] | None) -> tuple[str, str, dict[str, Any]]:
-    """Describe the request that creates a new job."""
-    return "POST", f"{_SERVICE_PREFIX}/jobs", {"job_type": job_type, "params": dict(params or {})}
-
-
-def get_job(job_id: str) -> tuple[str, str]:
-    """Describe the request that fetches a single job."""
-    return "GET", f"{_SERVICE_PREFIX}/jobs/{quote(job_id, safe='')}"
+def job_path(job: Job | str) -> str:
+    job_id = job.job_id if isinstance(job, Job) else job
+    return f"/jobs/{quote((job_id), safe='')}"
 
 
 def parse_response(response: httpx.Response) -> Any:

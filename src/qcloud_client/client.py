@@ -1,47 +1,44 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, Any, Self
+import time
+from collections.abc import Mapping
+from types import TracebackType
+from typing import Any, Self
 
 import httpx
 
-from . import core
-from .exceptions import QCloudError
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
-    from types import TracebackType
-
-    from .models import Job
-
-__all__ = ["Client"]
-
-VALID_JOB_TYPES = frozenset({"tn-covariance", "tn-sampling", "redpitaya"})
+from ._core import DEFAULT_BASE_URL, DEFAULT_TIMEOUT, SERVICE_PREFIX, build_headers, job_path, parse_job, parse_jobs, parse_response
+from .exceptions import JobTimeoutError, QCloudError
+from .models import Job, JobSpec
 
 
-class Client:
-    """A connection to a QCloud service.
+class QCloudClient:
+    """Synchronous connection to the QCloud service.
 
-    Keep one around for as long as you need it::
+    Use the client as a context manager so the connection pool is closed for you::
 
-        client = Client("https://qcloud.dtu.dk", api_key="...")
-        job = client.submit_job("tn-covariance", {...})
+        with QCloudClient(api_key="...") as client:
+            cov = TNCovariance(nmodes=64, r_db=8, loss=0.5, basis="pi4")
+            job = client.submit(cov)
+
+            result = client.wait(job, timeout=300).result
+            print(result)
+
+    Or keep one around for as long as you need it::
+
+        client = QCloudClient(api_key="...")
+
+        cov = TNCovariance(nmodes=64, r_db=8, loss=0.5, basis="pi4")
+        job = client.submit(cov)
+
+        result = client.wait(job, timeout=300).result
+        print(result)
+
         client.close()
-
-    The client owns an :class:`httpx.Client` holding a connection pool, so
-    calling :meth:`close` when you are done is good practice. Using the client
-    as a context manager does that for you, including on error::
-
-        with Client("https://qcloud.dtu.dk", api_key="...") as client:
-            job = client.submit_job("tn-covariance", {...})
     """
 
-    def __init__(self, base_url: str, api_key: str | None = None, timeout: float = core.DEFAULT_TIMEOUT, headers: Mapping[str, str] | None = None) -> None:
-        if not base_url:
-            msg = "base_url is required"
-            raise ValueError(msg)
+    def __init__(self, api_key: str | None = None, base_url: str = DEFAULT_BASE_URL, *, timeout: float = DEFAULT_TIMEOUT, headers: Mapping[str, str] | None = None) -> None:
         self._http = httpx.Client(
-            base_url=base_url.rstrip("/"),
-            headers=core.build_headers(api_key, "Bearer", headers),
+            base_url=base_url.rstrip("/") + SERVICE_PREFIX,
+            headers=build_headers(api_key, headers),
             timeout=timeout,
         )
 
@@ -57,33 +54,55 @@ class Client:
         """Close the client on exit."""
         self.close()
 
-    def get_jobs(self) -> list[Job]:
-        """Fetch all jobs."""
-        method, url = core.get_jobs()
-        return core.parse_jobs(self._request_json(method, url))
+    def submit(self, spec: JobSpec) -> Job:
+        if not isinstance(spec, JobSpec):
+            msg = f"submit() needs a job spec such as TNCovariance(...), got {type(spec).__name__}"
+            raise TypeError(msg)
+        payload = {"job_type": spec.job_type, "params": spec.to_params()}
+        return parse_job(self._request("POST", "/jobs", json=payload))
 
-    def submit_job(self, job_type: str, params: Mapping[str, Any] | None = None) -> Job:
-        """Submit a new job and return it as accepted by the server.
+    def get(self, job: Job | str) -> Job:
+        """Fetch the current state of a job."""
+        return parse_job(self._request("GET", job_path(job)))
 
-        Args:
-            job_type (str): One of "tn-covariance", "tn-sampling", "redpitaya".
-            params (Mapping[str, Any] | None): Mapping of job parameters.
-        """
-        if job_type not in VALID_JOB_TYPES:
-            raise ValueError(f"Unknown job_type {job_type!r}. It must be one of: {', '.join(sorted(VALID_JOB_TYPES))}")
-        method, url, body = core.post_job(job_type, params)
-        return core.parse_job(self._request_json(method, url, json=body))
+    def list_jobs(self) -> list[Job]:
+        """Fetch all of your jobs."""
+        return parse_jobs(self._request("GET", "/jobs"))
 
-    def get_job(self, job_id: str) -> Job:
-        """Fetch a single job by its identifier."""
-        method, url = core.get_job(job_id)
-        return core.parse_job(self._request_json(method, url))
+    def wait(self, job: Job | str, *, timeout: float | None, poll_interval: float = 2.0, max_poll_interval: float = 30.0) -> Job:
+        deadline = None if timeout is None else time.monotonic() + timeout
+        delay = poll_interval
+        while True:
+            current = self.get(job)
+            if current.finished:
+                return current
+            pause = delay
+            if deadline is not None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    msg = f"Job {current.job_id} did not finish within {timeout}s (status: {current.status})"
+                    raise JobTimeoutError(msg)
+                pause = min(pause, remaining)
+            time.sleep(pause)
+            delay = min(delay * 1.5, max_poll_interval)
+            job = current
 
-    def _request_json(self, method: str, url: str, **kwargs: Any) -> Any:
+    def update(self, job: Job | str, **params: Any) -> None:
+        """Change parameters of a pending job."""
+        if not params:
+            msg = "update() needs at least one parameter to change"
+            raise ValueError(msg)
+        self._request("PATCH", job_path(job), json={"params": params})
+
+    def delete(self, job: Job | str) -> None:
+        """Delete a pending job."""
+        self._request("DELETE", job_path(job))
+
+    def _request(self, method: str, path: str, *, json: Any = None) -> Any:
         """Send a request and return its decoded body."""
         try:
-            response = self._http.request(method, url, **kwargs)
+            response = self._http.request(method, path, json=json)
         except httpx.HTTPError as exc:
-            msg = f"{method} {url} failed: {exc}"
+            msg = f"{method} {path} failed: {exc}"
             raise QCloudError(msg) from exc
-        return core.parse_response(response)
+        return parse_response(response)

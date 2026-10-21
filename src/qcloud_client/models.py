@@ -1,25 +1,73 @@
-from __future__ import annotations
+from collections.abc import Mapping
+from dataclasses import dataclass, field, fields
+from enum import StrEnum
+from typing import Any, ClassVar, Literal, Self
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Final
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
-
-__all__ = [
-    "Job",
-    "JobStatus",
-]
+from .exceptions import QCloudError
 
 
-class JobStatus:
-    """Terminal job states reported by the API."""
+@dataclass(frozen=True, kw_only=True)
+class JobSpec:
+    """Base class for everything :meta:`QCloudClient.submit` accepts."""
 
-    COMPLETED: Final = "completed"
-    FAILED: Final = "failed"
+    job_type: ClassVar[str]
+
+    def to_params(self) -> dict[str, Any]:
+        return {f.name: getattr(self, f.name) for f in fields(self)}
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
+class RedPitaya(JobSpec): # noqa: D101
+    job_type: ClassVar[str] = "redpitaya"
+
+    asg: Literal["asg0", "asg1"]
+    output: Literal["out1", "out2", "off"]
+    waveform: Literal["sin", "cos", "ramp"]
+    frequency: float
+    amplitude: float
+    offset: float
+
+
+@dataclass(frozen=True, kw_only=True)
+class TNCovariance(JobSpec): # noqa: D101
+    job_type: ClassVar[str] = "tn-covariance"
+
+    nmodes: int
+    r_db: float
+    loss: float
+    basis: Literal["x", "p", "pi4"]
+
+
+@dataclass(frozen=True, kw_only=True)
+class TNCovarianceGates(JobSpec): # noqa: D101
+    job_type: ClassVar[str] = "tn-covariance"
+
+    nmodes: int
+    gates: Any
+
+
+@dataclass(frozen=True, kw_only=True)
+class TNSampling(JobSpec): # noqa: D101
+    job_type: ClassVar[str] = "tn-sampling"
+
+    cov_matrix: Any
+    d: int
+    chi: int
+    dd: int
+    N: int
+    n: int
+
+
+class JobStatus(StrEnum):
+    """Job states reported by the API."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True, slots=True)
 class Job:
     """A single job submitted to the service."""
 
@@ -32,12 +80,12 @@ class Job:
     created_at: int | None = None
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> Job:
+    def from_dict(cls, payload: Mapping[str, Any]) -> Self:
         """Build a job from a decoded API payload, ignoring unknown fields."""
         job_id = payload.get("job_id")
         if not job_id:
             msg = "Job payload is missing 'job_id'"
-            raise ValueError(msg)
+            raise QCloudError(msg)
         params = payload.get("params") or {}
         return cls(
             job_id=str(job_id),
