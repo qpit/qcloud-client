@@ -22,3 +22,7 @@ class APIStatusError(QCloudError):
 
 class JobTimeoutError(QCloudError):
     """A job did not reach a terminal state within the allowed time."""
+
+
+class ValidationError(QCloudError, ValueError):
+    """A job parameter was rejected locally."""

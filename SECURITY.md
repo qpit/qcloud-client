@@ -7,8 +7,8 @@ long-term support branches, and fixes are not backported to earlier minor versio
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
-| < 0.1   | :x:                |
+| 0.2.x   | :white_check_mark: |
+| < 0.2   | :x:                |
 
 If you are running an older version, upgrade to the latest release before reporting an issue.
 

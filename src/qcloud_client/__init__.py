@@ -2,7 +2,7 @@
 
 from ._version import __version__
 from .client import QCloudClient
-from .exceptions import APIStatusError, JobTimeoutError, QCloudError
+from .exceptions import APIStatusError, JobTimeoutError, QCloudError, ValidationError
 from .models import Job, RedPitaya, TNCovariance, TNCovarianceGates, TNSampling
 
 __all__ = [
@@ -15,5 +15,6 @@ __all__ = [
     "TNCovariance",
     "TNCovarianceGates",
     "TNSampling",
+    "ValidationError",
     "__version__",
 ]
