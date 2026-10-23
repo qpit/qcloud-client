@@ -4,11 +4,11 @@ on:
   push:
     tags: ["v*"]
 
-permissions: {}
-
 concurrency:
   group: release
   cancel-in-progress: false
+
+permissions: {}
 
 jobs:
   build:
@@ -68,7 +68,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          FLAGS=""
+          if [[ "$GITHUB_REF_NAME" =~ (a|b|rc)[0-9]+$ ]]; then
+            FLAGS="--prerelease"
+          fi
           gh release create "$GITHUB_REF_NAME" dist/* \
           --repo "$GITHUB_REPOSITORY" \
           --title "$GITHUB_REF_NAME" \
-          --generate-notes
+          --generate-notes $FLAGS
