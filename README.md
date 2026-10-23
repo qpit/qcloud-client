@@ -1,5 +1,6 @@
 # QCloud Client
 
+[![CodeQL](https://github.com/qpit/qcloud-client/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/qpit/qcloud-client/actions/workflows/github-code-scanning/codeql)
 [![Lint](https://github.com/qpit/qcloud-client/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/qpit/qcloud-client/actions/workflows/lint.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/qpit/qcloud-client/blob/main/LICENSE)
 
