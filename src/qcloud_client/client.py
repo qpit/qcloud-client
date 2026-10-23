@@ -5,8 +5,8 @@ from typing import Any, Self
 
 import httpx
 
-from ._core import DEFAULT_BASE_URL, DEFAULT_TIMEOUT, SERVICE_PREFIX, build_headers, job_path, parse_job, parse_jobs, parse_response
-from .exceptions import JobTimeoutError, QCloudError
+from ._core import BASE_URL, DEFAULT_TIMEOUT, SERVICE_PREFIX, build_headers, job_path, parse_job, parse_jobs, parse_response
+from .exceptions import JobTimeoutError, QCloudError, ValidationError
 from .models import Job, JobSpec
 
 
@@ -83,6 +83,10 @@ class QCloudClient:
         return parse_jobs(self._request("GET", "/jobs"))
 
     def wait(self, job: Job | str, *, timeout: float | None, poll_interval: float = 2.0, max_poll_interval: float = 30.0) -> Job:
+        if not 0 < poll_interval <= max_poll_interval:
+            msg = "poll_interval must be positive and no larger than max_poll_interval"
+            raise ValidationError(msg)
+
         deadline = None if timeout is None else time.monotonic() + timeout
         delay = poll_interval
         while True:

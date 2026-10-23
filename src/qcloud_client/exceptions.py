@@ -25,4 +25,4 @@ class JobTimeoutError(QCloudError):
 
 
 class ValidationError(QCloudError, ValueError):
-    """A job parameter was rejected locally."""
+    """An argument or job parameter was rejected locally."""

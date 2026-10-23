@@ -17,7 +17,6 @@ def _check_choice(name: str, value: object, choices: tuple[str, ...]) -> None:
         msg = f"{name} must be one of {', '.join(map(repr, choices))}, got value {value!r}"
         raise ValidationError(msg)
 
-
 def _check_int(name: str, value: object, *, lo: int, hi: int) -> None:
     if isinstance(value, bool) or not isinstance(value, Integral):
         msg = f"{name} must be an integer, got {type(value).__name__}"
@@ -25,7 +24,6 @@ def _check_int(name: str, value: object, *, lo: int, hi: int) -> None:
     if not lo <= value <= hi:
         msg = f"{name} must be between {lo} and {hi}, got {value}"
         raise ValidationError(msg)
-
 
 def _check_real(name: str, value: object, *, lo: float, hi: float) -> None:
     if isinstance(value, bool) or not isinstance(value, Real):
@@ -35,12 +33,10 @@ def _check_real(name: str, value: object, *, lo: float, hi: float) -> None:
         msg = f"{name} must be between {lo} and {hi}, got {value}"
         raise ValidationError(msg)
 
-
 def _check_gates(name: str, value: object) -> None:
     if not isinstance(value, (list, tuple)) or not all(isinstance(g, (list, tuple)) for g in value):
         msg = f"{name} must be a list of gate operations, each itself being a list"
         raise ValidationError(msg)
-
 
 def _check_cov_matrix(name: str, value: object) -> None:
     rows = value.tolist() if hasattr(value, "tolist") else value
@@ -52,7 +48,6 @@ def _check_cov_matrix(name: str, value: object) -> None:
         msg = f"{name} must contain only finite real numbers"
         raise ValidationError(msg)
 
-
 @dataclass(frozen=True, kw_only=True)
 class JobSpec:
     """Base class for everything :meth:`QCloudClient.submit` accepts."""
@@ -60,8 +55,7 @@ class JobSpec:
     job_type: ClassVar[str]
 
     def to_params(self) -> dict[str, Any]:
-        return {f.name: getattr(self, f.name) for f in fields(self)}
-
+        return {f.name: (v.tolist() if hasattr(v := getattr(self, f.name), "tolist") else v) for f in fields(self)}
 
 @dataclass(frozen=True, kw_only=True)
 class RedPitaya(JobSpec): # noqa: D101
@@ -82,7 +76,6 @@ class RedPitaya(JobSpec): # noqa: D101
         _check_real("amplitude", self.amplitude, lo=0, hi=1)
         _check_real("offset", self.offset, lo=-1, hi=1)
 
-
 @dataclass(frozen=True, kw_only=True)
 class TNCovariance(JobSpec): # noqa: D101
     job_type: ClassVar[str] = "tn-covariance"
@@ -97,7 +90,6 @@ class TNCovariance(JobSpec): # noqa: D101
         _check_real("r_db", self.r_db, lo=0, hi=16)
         _check_real("loss", self.loss, lo=0, hi=1)
         _check_choice("basis", self.basis, get_args(_BASIS))
-
 
 @dataclass(frozen=True, kw_only=True)
 class TNCovarianceGates(JobSpec): # noqa: D101
@@ -129,7 +121,6 @@ class TNSampling(JobSpec): # noqa: D101
         _check_int("N", self.N, lo=1, hi=5000000)
         _check_int("n", self.n, lo=1, hi=5000)
 
-
 class JobStatus(StrEnum):
     """Job states reported by the API."""
 
@@ -137,7 +128,6 @@ class JobStatus(StrEnum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
-
 
 @dataclass(frozen=True, slots=True)
 class Job:
@@ -150,6 +140,8 @@ class Job:
     result: Any = None
     error: str | None = None
     created_at: int | None = None
+    started_at: int | None = None
+    completed_at: int | None = None
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> Self:
@@ -167,7 +159,19 @@ class Job:
             result=payload.get("result"),
             error=payload.get("error"),
             created_at=payload.get("created_at"),
+            started_at=payload.get("started_at"),
+            completed_at=payload.get("completed_at"),
         )
+
+    @property
+    def pending(self) -> bool:
+        """Whether the job is pending execution."""
+        return self.status == JobStatus.PENDING
+
+    @property
+    def running(self) -> bool:
+        """Whether the job is actively running."""
+        return self.status == JobStatus.RUNNING
 
     @property
     def succeeded(self) -> bool:
