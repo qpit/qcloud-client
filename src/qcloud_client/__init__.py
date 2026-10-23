@@ -3,11 +3,12 @@
 from ._version import __version__
 from .client import QCloudClient
 from .exceptions import APIStatusError, JobTimeoutError, QCloudError, ValidationError
-from .models import Job, RedPitaya, TNCovariance, TNCovarianceGates, TNSampling
+from .models import Job, JobStatus, RedPitaya, TNCovariance, TNCovarianceGates, TNSampling
 
 __all__ = [
     "APIStatusError",
     "Job",
+    "JobStatus",
     "JobTimeoutError",
     "QCloudClient",
     "QCloudError",

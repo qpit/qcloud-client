@@ -13,32 +13,45 @@ from .models import Job, JobSpec
 class QCloudClient:
     """Synchronous connection to the QCloud service.
 
+    Build a job spec, submit it, then wait for the result.
     Use the client as a context manager so the connection pool is closed for you::
 
         with QCloudClient(api_key="...") as client:
             cov = TNCovariance(nmodes=64, r_db=8, loss=0.5, basis="pi4")
             job = client.submit(cov)
 
-            result = client.wait(job, timeout=300).result
-            print(result)
+            try:
+                job = client.wait(job, timeout=300)
+            except JobTimeoutError as e:
+                print(e)
+            else:
+                if job.succeeded:
+                    print(job.result)
+                else:
+                    print(job.error)
 
-    Or keep one around for as long as you need it::
+    Or keep one around for as long as you need it, and close it when you are done::
 
         client = QCloudClient(api_key="...")
 
-        cov = TNCovariance(nmodes=64, r_db=8, loss=0.5, basis="pi4")
-        job = client.submit(cov)
+        try:
+            job = client.wait(job, timeout=300)
+        except JobTimeoutError as e:
+            print(e)
+        finally:
+            client.close()
 
-        result = client.wait(job, timeout=300).result
-        print(result)
-
-        client.close()
+    Every error raised by the client derives from :class:`QCloudError`.
     """
 
-    def __init__(self, api_key: str | None = None, base_url: str = DEFAULT_BASE_URL, *, timeout: float = DEFAULT_TIMEOUT, headers: Mapping[str, str] | None = None) -> None:
+    def __init__(self, api_key: str, *, timeout: float = DEFAULT_TIMEOUT, headers: Mapping[str, str] | None = None) -> None:
+        if not isinstance(api_key, str) and not api_key.strip():
+            msg = "api_key must be a non-empty string"
+            raise ValidationError(msg)
+
         self._http = httpx.Client(
-            base_url=base_url.rstrip("/") + SERVICE_PREFIX,
-            headers=build_headers(api_key, headers),
+            base_url=BASE_URL + SERVICE_PREFIX,
+            headers=build_headers(api_key.strip(), headers),
             timeout=timeout,
         )
 

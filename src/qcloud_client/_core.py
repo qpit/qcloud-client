@@ -5,10 +5,10 @@ from urllib.parse import quote
 import httpx
 
 from ._version import __version__
-from .exceptions import APIStatusError, QCloudError
+from .exceptions import APIStatusError, QCloudError, ValidationError
 from .models import Job
 
-DEFAULT_BASE_URL = "https://qcloud.dtu.dk"
+BASE_URL = "https://qcloud.dtu.dk"
 DEFAULT_TIMEOUT = 30
 SERVICE_PREFIX = "/api/v1/service"
 
@@ -16,21 +16,23 @@ USER_AGENT = f"qcloud-python/{__version__} httpx/{httpx.__version__}"
 
 _MISSING = object()
 
-
-def build_headers(api_key: str | None, extra: Mapping[str, str] | None) -> dict[str, str]:
+def build_headers(api_key: str, extra: Mapping[str, str] | None) -> dict[str, str]:
     """Assemble the default request headers, letting `extra` override them."""
-    headers = {"Accept": "application/json", "User-Agent": USER_AGENT}
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
+    headers = {
+        "Accept": "application/json",
+        "Authorization": f"Bearer {api_key}",
+        "User-Agent": USER_AGENT,
+    }
     if extra:
         headers.update(extra)
     return headers
 
-
 def job_path(job: Job | str) -> str:
     job_id = job.job_id if isinstance(job, Job) else job
-    return f"/jobs/{quote((job_id), safe='')}"
-
+    if not isinstance(job_id, str) or not job_id.strip():
+        msg = "job_id must be non-empty string"
+        raise ValidationError(msg)
+    return f"/jobs/{quote(job_id, safe='')}"
 
 def parse_response(response: httpx.Response) -> Any:
     """Return the decoded body, raising :class:`APIStatusError` on error statuses."""
@@ -40,14 +42,12 @@ def parse_response(response: httpx.Response) -> Any:
         return None
     return _decode(response)
 
-
 def parse_job(payload: Any) -> Job:
     """Coerce a decoded job payload into a :class:`~qcloud_client.models.Job`."""
     if not isinstance(payload, Mapping):
         msg = f"Expected a job object, got {type(payload).__name__}"
         raise QCloudError(msg)
     return Job.from_dict(payload)
-
 
 def parse_jobs(payload: Any) -> list[Job]:
     """Coerce a decoded job list into :class:`~qcloud_client.models.Job` objects."""
@@ -58,7 +58,6 @@ def parse_jobs(payload: Any) -> list[Job]:
         raise QCloudError(msg)
     return [parse_job(item) for item in payload]
 
-
 def _decode(response: httpx.Response, default: Any = _MISSING) -> Any:
     """Decode a JSON body, returning `default` instead of raising when given."""
     try:
@@ -68,7 +67,6 @@ def _decode(response: httpx.Response, default: Any = _MISSING) -> Any:
             return default
         msg = "Response body is not valid JSON"
         raise QCloudError(msg) from exc
-
 
 def _error_message(response: httpx.Response) -> str:
     """Pull the server's error message out of the body, falling back to the status text."""
