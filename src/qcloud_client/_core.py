@@ -10,6 +10,7 @@ from .models import Job
 
 BASE_URL = "https://qcloud.dtu.dk"
 DEFAULT_TIMEOUT = 30
+MIN_POLL_INTERVAL = 0.5
 SERVICE_PREFIX = "/api/v1/service"
 
 USER_AGENT = f"qcloud-python/{__version__} httpx/{httpx.__version__}"
