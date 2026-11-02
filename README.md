@@ -1,6 +1,6 @@
 # QCloud Client
 
-[![CodeQL](https://github.com/qpit/qcloud-client/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/qpit/qcloud-client/actions/workflows/github-code-scanning/codeql)
+[![CodeQL](https://github.com/qpit/qcloud-client/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/qpit/qcloud-client/actions/workflows/github-code-scanning/codeql)
 [![Lint](https://github.com/qpit/qcloud-client/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/qpit/qcloud-client/actions/workflows/lint.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/qpit/qcloud-client/blob/main/LICENSE)
 
@@ -9,9 +9,7 @@
     - [Requirements](#requirements)
     - [Installation](#installation)
 - [Usage](#usage)
-- [Testing](#testing)
-    - [Linting](#linting)
-    - [Pytest](#pytest)
+- [Contributing](#contributing)
 - [License](#license)
 
 # Overview
@@ -41,22 +39,8 @@ The public interface is not yet implemented. Usage examples will be published he
 
 Import the package using `import qcloud_client`
 
-# Testing
-## Linting
-Code linting checks are performed by the Ruff package. Read more here: https://docs.astral.sh/ruff/
-
-To perform linting checks, run:
-```bash
-ruff check .
-```
-
-The linting rules can be configured in the `.ruff.toml` file found in the project's root directory with the available rules listed here: https://docs.astral.sh/ruff/rules/
-
-## Pytest
-To run tests with `pytest` and generate a coverage report, run:
-```bash
-pytest -v --cov=. --cov-fail-under=85 --cov-report=term-missing:skip-covered
-```
+# Contributing
+See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, the branching workflow, linting and deployments.
 
 # License
 Released under the MIT License. See [LICENSE](https://github.com/qpit/qcloud-client/blob/main/LICENSE) for the full text.

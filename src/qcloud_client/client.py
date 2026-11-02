@@ -1,3 +1,4 @@
+import os
 import time
 from collections.abc import Mapping
 from types import TracebackType
@@ -5,7 +6,7 @@ from typing import Any, Self
 
 import httpx
 
-from ._core import BASE_URL, DEFAULT_TIMEOUT, SERVICE_PREFIX, build_headers, job_path, parse_job, parse_jobs, parse_response
+from ._core import BASE_URL, DEFAULT_TIMEOUT, MIN_POLL_INTERVAL, SERVICE_PREFIX, build_headers, job_path, parse_job, parse_jobs, parse_response
 from .exceptions import JobTimeoutError, QCloudError, ValidationError
 from .models import Job, JobSpec
 
@@ -42,11 +43,19 @@ class QCloudClient:
             client.close()
 
     Every error raised by the client derives from :class:`QCloudError`.
+
+    Args:
+        api_key (str | None): API key used to authenticate with the QCloud service. If ``None``, the ``QCLOUD_API_KEY`` environment variable is used.
+        timeout (float): Timeout in seconds for HTTP requests. Default 30 seconds.
+        headers (Mapping[str, str] | None): Optional extra HTTP headers.
     """
 
-    def __init__(self, api_key: str, *, timeout: float = DEFAULT_TIMEOUT, headers: Mapping[str, str] | None = None) -> None:
-        if not isinstance(api_key, str) and not api_key.strip():
-            msg = "api_key must be a non-empty string"
+    def __init__(self, api_key: str | None = None, *, timeout: float = DEFAULT_TIMEOUT, headers: Mapping[str, str] | None = None) -> None:
+        if api_key is None:
+            api_key = os.getenv("QCLOUD_API_KEY")
+
+        if not isinstance(api_key, str) or not api_key.strip():
+            msg = "api_key must be a non-empty string (or set QCLOUD_API_KEY environment variable)"
             raise ValidationError(msg)
 
         self._http = httpx.Client(
@@ -83,8 +92,12 @@ class QCloudClient:
         return parse_jobs(self._request("GET", "/jobs"))
 
     def wait(self, job: Job | str, *, timeout: float | None, poll_interval: float = 2.0, max_poll_interval: float = 30.0) -> Job:
-        if not 0 < poll_interval <= max_poll_interval:
-            msg = "poll_interval must be positive and no larger than max_poll_interval"
+        if timeout is not None and not timeout > 0:
+            msg = "timeout must be positive"
+            raise ValidationError(msg)
+
+        if not MIN_POLL_INTERVAL < poll_interval <= max_poll_interval:
+            msg = f"poll_interval must be at least {MIN_POLL_INTERVAL}s and no larger than max_poll_interval"
             raise ValidationError(msg)
 
         deadline = None if timeout is None else time.monotonic() + timeout
