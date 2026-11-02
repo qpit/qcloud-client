@@ -34,6 +34,9 @@ def _check_real(name: str, value: object, *, lo: float, hi: float) -> None:
         raise ValidationError(msg)
 
 def _check_gates(name: str, value: object) -> None:
+    if not value:
+        msg = f"{name} cannot be an empty list"
+        raise ValidationError(msg)
     if not isinstance(value, (list, tuple)) or not all(isinstance(g, (list, tuple)) for g in value):
         msg = f"{name} must be a list of gate operations, each itself being a list"
         raise ValidationError(msg)
@@ -96,7 +99,7 @@ class TNCovarianceGates(JobSpec): # noqa: D101
     job_type: ClassVar[str] = "tn-covariance"
 
     nmodes: int
-    gates: Any
+    gates: list[list[Any]] | tuple[tuple[Any]]
 
     def __post_init__(self) -> None:
         _check_int("nmodes", self.nmodes, lo=3, hi=199)
@@ -131,11 +134,23 @@ class JobStatus(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class Job:
-    """A single job submitted to the service."""
+    """A single job submitted to the service.
+
+    Attributes:
+        job_id (str): Unique identifier assigned by the backend service.
+        status (str): Current status of the job, as reported by the backend service. Compare against :class:`JobStatus` or use the given properties, such as :attr:`succeeded`.
+        job_type (str): Kind of job.
+        params (dict[str, Any]): List of parameters the job was created with.
+        result (Any): Result payload once the job succeeded, otherwise ``None``.
+        error (str | None): Error details if the job failed, otherwise ``None``.
+        created_at (int | None): When the job was created.
+        started_at (int | None): When the execution started, or ``None`` if it has not started.
+        completed_at (int | None): When the execution ended, or ``None`` if it has not ended.
+    """
 
     job_id: str
     status: str
-    job_type: str | None = None
+    job_type: str
     params: dict[str, Any] = field(default_factory=dict)
     result: Any = None
     error: str | None = None
@@ -147,7 +162,7 @@ class Job:
     def from_dict(cls, payload: Mapping[str, Any]) -> Self:
         """Build a job from a decoded API payload, ignoring unknown fields."""
         job_id = payload.get("job_id")
-        if not job_id:
+        if job_id is None:
             msg = "Job payload is missing 'job_id'"
             raise QCloudError(msg)
         params = payload.get("params") or {}
@@ -187,3 +202,10 @@ class Job:
     def finished(self) -> bool:
         """Whether the job reached a terminal state and will not change again."""
         return self.succeeded or self.failed
+
+    @property
+    def runtime(self) -> float | None:
+        """The time it took the job to finish execution."""
+        if self.started_at is None or self.completed_at is None:
+            return None
+        return self.completed_at - self.started_at
