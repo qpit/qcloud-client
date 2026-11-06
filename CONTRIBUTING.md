@@ -6,8 +6,9 @@
 - [Making Changes](#making-changes)
     - [Branches](#branches)
     - [Pull Requests](#pull-requests)
-    - [Deployments](#deployments)
+    - [Releases](#releases)
 - [Testing](#testing)
+    - [CodeQL](#codeql)
     - [Linting](#linting)
 - [Reporting Bugs](#reporting-bugs)
 
@@ -64,7 +65,7 @@ Open pull requests against `develop`.
 In the description, explain what changed and why, and link the issue it closes if there is one.
 A pull request is merged once the automated tests pass and a maintainer has approved it.
 
-## Deployments
+## Releases
 Releases are published to [PyPI](https://pypi.org/project/qcloud-client/) automatically by a GitHub Actions workflow using PyPI Trusted Publishing.
 Only maintainers of this repository can create releases.
 
@@ -88,6 +89,9 @@ If a release turns out to be broken, fix the problem and push a new patch versio
 If needed, yank the broken build on PyPI so that it is no longer available for users to install.
 
 # Testing
+## CodeQL
+Code quality testing is done automatically by GitHub on every push. It checks both Python code and action workflows.
+
 ## Linting
 Code linting checks are performed by the Ruff package.
 Read more here: https://docs.astral.sh/ruff/
