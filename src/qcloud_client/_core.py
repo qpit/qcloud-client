@@ -10,21 +10,27 @@ from .models import Job
 
 BASE_URL = "https://qcloud.dtu.dk"
 DEFAULT_TIMEOUT = 30
-MIN_POLL_INTERVAL = 0.5
+MIN_POLL_INTERVAL = 1
 SERVICE_PREFIX = "/api/v1/service"
 
 USER_AGENT = f"qcloud-python/{__version__} httpx/{httpx.__version__}"
+PROTECTED_HEADERS = {"accept", "authorization"}
 
 _MISSING = object()
 
 def build_headers(api_key: str, extra: Mapping[str, str] | None) -> dict[str, str]:
-    """Assemble the default request headers, letting `extra` override them."""
+    """Assemble the default request headers, letting `extra` override some of them."""
     headers = {
         "Accept": "application/json",
         "Authorization": f"Bearer {api_key}",
         "User-Agent": USER_AGENT,
     }
     if extra:
+        names = {name.lower() for name in extra}
+        if blocked := names & PROTECTED_HEADERS:
+            msg = f"headers cannot set {', '.join(sorted(blocked))}"
+            raise ValidationError(msg)
+        headers = {k: v for k, v in headers.items() if k.lower() not in names}
         headers.update(extra)
     return headers
 
