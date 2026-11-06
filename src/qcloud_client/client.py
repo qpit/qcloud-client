@@ -91,12 +91,12 @@ class QCloudClient:
         """Fetch all of your jobs."""
         return parse_jobs(self._request("GET", "/jobs"))
 
-    def wait(self, job: Job | str, *, timeout: float | None, poll_interval: float = 2.0, max_poll_interval: float = 30.0) -> Job:
-        if timeout is not None and not timeout > 0:
-            msg = "timeout must be positive"
+    def wait(self, job: Job | str, *, timeout: int, poll_interval: float = 2.0, max_poll_interval: float = 30.0) -> Job:
+        if isinstance(timeout, bool) or not isinstance(timeout, int) or timeout < 1:
+            msg = "timeout must be a positive integer"
             raise ValidationError(msg)
 
-        if not MIN_POLL_INTERVAL < poll_interval <= max_poll_interval:
+        if not MIN_POLL_INTERVAL <= poll_interval <= max_poll_interval:
             msg = f"poll_interval must be at least {MIN_POLL_INTERVAL}s and no larger than max_poll_interval"
             raise ValidationError(msg)
 

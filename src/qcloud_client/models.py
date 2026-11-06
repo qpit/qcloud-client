@@ -143,9 +143,9 @@ class Job:
         params (dict[str, Any]): List of parameters the job was created with.
         result (Any): Result payload once the job succeeded, otherwise ``None``.
         error (str | None): Error details if the job failed, otherwise ``None``.
-        created_at (int | None): When the job was created.
-        started_at (int | None): When the execution started, or ``None`` if it has not started.
-        completed_at (int | None): When the execution ended, or ``None`` if it has not ended.
+        created_at (float | None): When the job was created.
+        started_at (float | None): When the execution started, or ``None`` if it has not started.
+        completed_at (float | None): When the execution ended, or ``None`` if it has not ended.
     """
 
     job_id: str
@@ -154,9 +154,9 @@ class Job:
     params: dict[str, Any] = field(default_factory=dict)
     result: Any = None
     error: str | None = None
-    created_at: int | None = None
-    started_at: int | None = None
-    completed_at: int | None = None
+    created_at: float | None = None
+    started_at: float | None = None
+    completed_at: float | None = None
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> Self:

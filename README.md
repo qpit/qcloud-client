@@ -15,9 +15,6 @@
 # Overview
 GitHub repository for the Python API wrapper for [QCloud](https://qcloud.dtu.dk), the quantum computing service operated by QPIT at the Technical University of Denmark.
 
-> [!WARNING]
-> The package is in early development and is not yet ready for stable public use. Expect breaking changes between minor versions until `1.0.0`.
-
 # Setup
 ## Requirements
 - Python 3.11 or newer
@@ -35,9 +32,29 @@ pip install git+https://github.com/qpit/qcloud-client.git@develop
 ```
 
 # Usage
-The public interface is not yet implemented. Usage examples will be published here alongside the first release that exposes a client.
+The complete documentation can be found at [QCloud's documentation page](https://qcloud.dtu.dk/docs).
+Usage examples and the API reference will be published there.
 
-Import the package using `import qcloud_client`
+Below is a quick start example:
+```python
+from qcloud_client import JobTimeoutError, QCloudClient, TNCovariance
+
+with QCloudClient(api_key="...") as client:
+    cov = TNCovariance(nmodes=64, r_db=8, loss=0.5, basis="pi4")
+    job = client.submit(cov)
+
+    try:
+        job = client.wait(job, timeout=300)
+    except JobTimeoutError as e:
+        print(e)
+    else:
+        if job.succeeded:
+            print(job.result)
+        else:
+            print(job.error)
+```
+
+For more, see the [documentation](https://qcloud.dtu.dk/docs).
 
 # Contributing
 See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, the branching workflow, linting and deployments.
