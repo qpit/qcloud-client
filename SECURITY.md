@@ -5,7 +5,7 @@ Only the latest release of the current major version receives security fixes.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 1.x.    | :white_check_mark: |
+| 1.x     | :white_check_mark: |
 | < 1.0.0 | :x:                |
 
 If you are running an older version, upgrade to the latest release before reporting an issue.
