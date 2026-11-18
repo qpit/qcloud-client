@@ -124,7 +124,7 @@ class TNSampling(JobSpec): # noqa: D101
         _check_int("N", self.N, lo=1, hi=5000000)
         _check_int("n", self.n, lo=1, hi=5000)
 
-class Result(dict):
+class _Result(dict):
     __slots__ = ()
 
     def __getattr__(self, name: str) -> Any:
@@ -183,7 +183,7 @@ class Job:
 
         result = payload.get("result")
         if isinstance(result, Mapping):
-            result = Result(result)
+            result = _Result(result)
 
         return cls(
             job_id=str(job_id),
