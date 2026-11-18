@@ -124,6 +124,20 @@ class TNSampling(JobSpec): # noqa: D101
         _check_int("N", self.N, lo=1, hi=5000000)
         _check_int("n", self.n, lo=1, hi=5000)
 
+class Result(dict):
+    __slots__ = ()
+
+    def __getattr__(self, name: str) -> Any:
+        try:
+            return self[name]
+        except KeyError:
+            fields = ", ".join(self) or "none"
+            msg = f"result has no field {name!r} (available: {fields})"
+            raise AttributeError(msg) from None
+
+    def __dir__(self) -> list[str]:
+        return [*super().__dir__(), *self]
+
 class JobStatus(StrEnum):
     """Job states reported by the API."""
 
@@ -166,12 +180,17 @@ class Job:
             msg = "Job payload is missing 'job_id'"
             raise QCloudError(msg)
         params = payload.get("params") or {}
+
+        result = payload.get("result")
+        if isinstance(result, Mapping):
+            result = Result(result)
+
         return cls(
             job_id=str(job_id),
             status=str(payload.get("status", "")),
             job_type=payload.get("job_type"),
             params=dict(params),
-            result=payload.get("result"),
+            result=result,
             error=payload.get("error"),
             created_at=payload.get("created_at"),
             started_at=payload.get("started_at"),
