@@ -1,6 +1,6 @@
 import os
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from types import TracebackType
 from typing import Any, Self
 
@@ -77,6 +77,16 @@ class QCloudClient:
         self.close()
 
     def submit(self, spec: JobSpec) -> Job:
+        """Submit a job to the QCloud service.
+
+        The call returns as soon as the job is accepted, it does not wait for the job to run.
+        Use :meth:`wait` to block until the job has finished::
+
+            job = client.submit(TNCovariance(nmodes=64, r_db=8, loss=0.5, basis="pi4"))
+
+        Args:
+            spec (JobSpec): Job specification describing what to run, such as :class:`TNCovariance`.
+        """
         if not isinstance(spec, JobSpec):
             msg = f"submit() needs a job spec such as TNCovariance(...), got {type(spec).__name__}"
             raise TypeError(msg)
@@ -91,7 +101,25 @@ class QCloudClient:
         """Fetch all of your jobs."""
         return parse_jobs(self._request("GET", "/jobs"))
 
-    def wait(self, job: Job | str, *, timeout: int, poll_interval: float = 2.0, max_poll_interval: float = 30.0) -> Job:
+    def wait(self, job: Job | str, *, timeout: int, poll_interval: float = 2.0, max_poll_interval: float = 30.0, callback: Callable[[Job], None] | None = None) -> Job:
+        """Block until a job has finished.
+
+        The wait between polls starts at ``poll_interval`` and grows by a factor of 1.5 after each poll, up to ``max_poll_interval``.
+        A job that finished with an error is still returned normally, so check :attr:`Job.succeeded` before using the result::
+
+            job = client.wait(job, timeout=300)
+            if job.succeeded:
+                print(job.result)
+            else:
+                print(job.error)
+
+        Args:
+            job (Job | str): The job to wait for, or its job ID.
+            timeout (int): Maximum time to wait in seconds. Must be a positive integer.
+            poll_interval (float): Initial time in seconds between status checks. Must be at least ``MIN_POLL_INTERVAL`` and no larger than ``max_poll_interval``. Default 2 seconds.
+            max_poll_interval (float): Upper limit in seconds for the time between status checks. Default 30 seconds.
+            callback (Callable[[Job], None] | None): Optional function called with the latest :class:`Job` after each poll in which the job has not yet finished, for example to report progress.
+        """
         if isinstance(timeout, bool) or not isinstance(timeout, int) or timeout < 1:
             msg = "timeout must be a positive integer"
             raise ValidationError(msg)
@@ -100,19 +128,21 @@ class QCloudClient:
             msg = f"poll_interval must be at least {MIN_POLL_INTERVAL}s and no larger than max_poll_interval"
             raise ValidationError(msg)
 
-        deadline = None if timeout is None else time.monotonic() + timeout
+        deadline = time.monotonic() + timeout
         delay = poll_interval
         while True:
+            started = time.monotonic()
             current = self.get(job)
             if current.finished:
                 return current
-            pause = delay
-            if deadline is not None:
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    msg = f"Job {current.job_id} did not finish within {timeout}s (status: {current.status})"
-                    raise JobTimeoutError(msg)
-                pause = min(pause, remaining)
+            if callback:
+                callback(current)
+            now = time.monotonic()
+            remaining = deadline - now
+            if remaining <= 0:
+                msg = f"Job {current.job_id} did not finish within {timeout}s (status: {current.status})"
+                raise JobTimeoutError(msg)
+            pause = min(max(started + delay - now, 0), remaining)
             time.sleep(pause)
             delay = min(delay * 1.5, max_poll_interval)
             job = current
